@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <style>
+      .cls-1, .cls-2 {
+        fill: #fff;
+      }
+
+      .cls-3 {
+        opacity: .6;
+      }
+
+      .cls-2 {
+        opacity: .2;
+      }
+    </style>
+  </defs>
+  <g id="PWD_PAGE" data-name="PWD PAGE">
+    <g id="Key">
+      <g id="Keys">
+        <g id="seven">
+          <circle class="cls-2" cx="50" cy="50" r="50"/>
+          <g class="cls-3">
+            <path class="cls-1" d="m63.33,36.65c-3.17,5.66-5.68,10.76-7.55,15.31-1.87,4.54-3.23,9.71-4.09,15.5h-8.15c.9-5.5,2.39-10.62,4.46-15.36,2.07-4.74,4.45-9.27,7.14-13.58h-16.44v-6.35h24.63v4.48Z"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>

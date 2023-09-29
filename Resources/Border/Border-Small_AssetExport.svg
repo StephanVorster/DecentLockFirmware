@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 425.89 744.02">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #03aab2;
+        stroke-miterlimit: 10;
+        stroke-width: 5px;
+      }
+    </style>
+  </defs>
+  <g id="IDLE_PAGE" data-name="IDLE PAGE">
+    <path id="Border" class="cls-1" d="m377.64,741.52H48.25c-25.27,0-45.75-21.21-45.75-47.37V49.87C2.5,23.71,22.98,2.5,48.25,2.5h329.39c25.27,0,45.75,21.21,45.75,47.37v644.27h0c0,26.16-20.48,47.37-45.75,47.37Z"/>
+  </g>
+</svg>

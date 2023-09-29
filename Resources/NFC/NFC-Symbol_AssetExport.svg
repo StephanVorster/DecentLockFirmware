@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 81.05 104.87">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke: #fff;
+        stroke-linecap: round;
+        stroke-miterlimit: 10;
+        stroke-width: 7px;
+      }
+    </style>
+  </defs>
+  <g id="NFC_PAGE" data-name="NFC PAGE">
+    <g id="NFC-Symbol">
+      <path class="cls-1" d="m3.5,68.75c12.61-9.01,12.61-23.62,0-32.62"/>
+      <path class="cls-1" d="m49.17,101.37c37.84-27.03,37.84-70.85,0-97.87"/>
+      <path class="cls-1" d="m18.72,79.62c21.02-15.02,21.02-39.36,0-54.37"/>
+      <path class="cls-1" d="m33.95,90.5c29.43-21.02,29.43-55.1,0-76.12"/>
+    </g>
+  </g>
+</svg>

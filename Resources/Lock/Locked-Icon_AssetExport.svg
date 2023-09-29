@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 127.38 165.58">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+        stroke-width: 15px;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #ee3968;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: #ee3968;
+      }
+    </style>
+  </defs>
+  <g id="IDLE_PAGE" data-name="IDLE PAGE">
+    <g id="Locked">
+      <rect class="cls-2" x=".5" y="68.59" width="126.38" height="96.49" rx="20" ry="20"/>
+      <rect class="cls-1" x="23.59" y="7.5" width="80.19" height="114.17" rx="37.72" ry="37.72"/>
+    </g>
+  </g>
+</svg>

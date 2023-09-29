@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64.32 83.06">
+  <defs>
+    <style>
+      .cls-1, .cls-2, .cls-3 {
+        fill: none;
+        stroke: #fff;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2, .cls-3 {
+        stroke-width: 3px;
+      }
+
+      .cls-3 {
+        stroke-linecap: round;
+      }
+    </style>
+  </defs>
+  <g id="PWD_PAGE" data-name="PWD PAGE">
+    <g id="NFC_Symbol" data-name="NFC Symbol">
+      <path class="cls-3" d="m37,1.5c14.26,0,25.82,11.69,25.82,26.12"/>
+      <path class="cls-3" d="m37,9.61c9.85,0,17.83,8.07,17.83,18.03"/>
+      <path class="cls-3" d="m37,17.46c5.56,0,10.06,4.56,10.06,10.18"/>
+      <rect class="cls-2" x="1.5" y="24.97" width="38.11" height="56.59" rx="3.18" ry="3.18"/>
+      <rect class="cls-1" x="6.05" y="29.62" width="29" height="42.28" rx="1" ry="1"/>
+      <circle class="cls-1" cx="20.55" cy="75.89" r="2.09"/>
+    </g>
+  </g>
+</svg>
