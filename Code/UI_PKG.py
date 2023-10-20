@@ -1,8 +1,6 @@
-from PySide6.QtCore import *
 from JN_PKG import *
 from UI_ICONS import *
-
-import PySide6.QtWidgets
+from typing import List
 
 class UI_Color(Enum):
         SHADOW  = "#292929"
@@ -21,12 +19,13 @@ class UI_NumericKeypad():
         self.icon = icons
 
         # Status
-        self.inputAttempt       : int = 0
-        self.inputAttemptLimit  : int = 2
-        self.inputSizeLimit     : int = 10
-        self.inputSizeMin       : int = 3
-        
-        self.en_key         : bool = False
+        self.rule_inputAttemptLimit : int = 2           # Max attempt per password
+        self.rule_inputSizeLimit    : int = 10          # Max number of pswd digit
+        self.rule_inputSizeMin      : int = 3           # Min number of pswd digit
+
+        self.internalEntryExit      : bool = False      # True if j_entrance or j_exit is being used internally. To trigger entrance or exit cb for ext usage
+
+        # Enablers
         self.en_key_reset   : bool = False
         self.en_key_enter   : bool = False
         self.en_key_wrong   : bool = False
@@ -58,8 +57,6 @@ class UI_NumericKeypad():
         self.key_1.j_iconSet(icons.keypad_one)
         initKeyObjects(self.key_1)
         self.key_1.j_callbackRelease( self.key_1_event )
-
-        self.key_1.j_featureSet(  )
 
         self.key_2 = JN_SVG_Widget(parent)
         self.key_2.j_iconSet(icons.keypad_two)
@@ -145,6 +142,8 @@ class UI_NumericKeypad():
         self.key_enter.j_bringFront()
 
         self.key_0.j_setEntryExitCallbacks( entry=self.Handler_AfterEntryAnim )
+        self.key_5.j_setEntryExitCallbacks( exit=self.Handler_AfterMainExit )
+        self.key_6.j_setEntryExitCallbacks( entry=self.Handler_AfterMainEntry )
         self.ENABLE_ALL_KEYPRESSES( enable=False )
 
         # Timer
@@ -156,10 +155,11 @@ class UI_NumericKeypad():
         self.tmr.timeout.connect( tmr_done )
 
         # Variables
-        self.COMBINATION : str = [ "12345" ]
-        self.INPUT : str = ""
-        self.i_combo : int = 0
-        self.last_key : int = None
+        self.j_COMBINATION : List[str] = [ "12345", "54321" ]
+        self.j_INPUT : str = ""
+        self.j_passwordIndex : int = 0
+        self.j_lastKeypress : int = None
+        self.j_attempt : int = 0
 
         # Messages
         self.font : QFont = QFont("Bahnscript")
@@ -172,12 +172,15 @@ class UI_NumericKeypad():
         self.msg_EnterPin   : tuple[ str, int, str ] = ("Enter your PIN", 16, UI_Color.WHITE.value)
         self.msg_maxPinSize : tuple[ str, int, str ] = ("Maximum Digit Reached, Try Again", 16, UI_Color.WHITE.value)
     
-        if self.COMBINATION.__len__() > 1:
-            self.j_showMsgMultiPswd( self.i_combo )
-        if self.COMBINATION.__len__() == 1:
+        if self.j_COMBINATION.__len__() > 1:
+            self.j_showMsgMultiPswd( self.j_passwordIndex )
+        if self.j_COMBINATION.__len__() == 1:
             self.j_showMsg( self.msg_EnterPin )
 
         # CALL BACKS
+        # LastKeypress
+        # RemainingPassword
+        # RemainingAttempt
         self.correct_cb = None
         self.wrong_cb = None
         self.afterEntrance_cb = None
@@ -200,6 +203,9 @@ class UI_NumericKeypad():
 
     def j_Entrance(self):
         print("----ENTRANCE")
+
+        def cb(): print("dfdfdfgdfg")
+
         self.key_1.j_Entrance(animate=True)
         self.key_2.j_Entrance(animate=True)
         self.key_3.j_Entrance(animate=True)
@@ -210,6 +216,7 @@ class UI_NumericKeypad():
         self.key_8.j_Entrance(animate=True)
         self.key_9.j_Entrance(animate=True)
         self.key_0.j_Entrance(animate=True)
+
 
     def j_Exit(self):
         print("----EXIT")
@@ -229,41 +236,71 @@ class UI_NumericKeypad():
         self.key_wrong.j_Exit(animate=True)
         self.ENABLE_ALL_KEYPRESSES( enable=False )
 
-    def setInternalCallbacks(
+        
+    
+    def j_getRemainingPassword(self):
+        return self.j_COMBINATION.__len__() - self.j_passwordIndex
+    
+    def j_getRemainingAttempt(self):
+        return self.rule_inputAttemptLimit - self.j_attempt
+    
+    def j_setPassword(
+        self,
+        add:str = None,
+        remove:str = None
+    ):
+        if add == "clear" or remove == "clear":
+            self.j_COMBINATION.clear()
+            return
+
+        if add:
+            self.j_COMBINATION.append( add )
+            return
+
+        if remove:
+            self.j_COMBINATION.remove( remove )
+            if self.j_COMBINATION.__len__() == 0:
+                print("Empty")
+            return
+    
+    def j_setRules(
+        self,
+        inputAttemptLimit = None,           
+        inputSizeLimit = None,        
+        inputSizeMin = None    
+    ):
+        if not inputAttemptLimit == "default":  self.rule_inputAttemptLimit = inputAttemptLimit        
+        elif inputAttemptLimit == "default":    self.rule_inputAttemptLimit = 2
+        
+        if not inputSizeLimit == "default":     self.rule_inputSizeLimit    = inputSizeLimit         
+        elif inputAttemptLimit == "default":    self.rule_inputSizeLimit    = 10
+        
+        if not inputSizeMin == "default":       self.rule_inputSizeMin      = inputSizeMin 
+        elif inputAttemptLimit == "default":    self.rule_inputSizeMin      = 3
+
+    def j_setCallbacks(
         self,
         after_entrance = None,
         after_exit = None,
         correct = None,
         wrong = None,
-        keypress = None,
-        clear = False
+        keypress = None
     ):
         
-        if not after_entrance == None:  
-            self.afterEntrance_cb = after_entrance
-            self.key_1.j_setEntryExitCallbacks( entry=self.afterEntrance_cb )
+        if not after_entrance == "clear":   self.afterEntrance_cb = after_entrance
+        if after_entrance == "clear":       self.afterEntrance_cb = None
 
-        if after_entrance == None:      
-            self.afterEntrance_cb = None
-            self.key_1.j_setEntryExitCallbacks( clear=True )
-
-        if not after_exit == None:      
-            self.afterExit_cb = after_exit
-            self.key_1.j_setEntryExitCallbacks( exit=self.afterExit_cb )
-
-        if after_exit == None:          
-            self.afterExit_cb = None
-            self.key_1.j_setEntryExitCallbacks( clear=True )
+        if not after_exit == "clear":       self.afterExit_cb = after_exit
+        if after_exit == "clear":           self.afterExit_cb = None
             
+        if not correct == "clear":          self.correct_cb = correct
+        if correct == "clear":              self.correct_cb = None
 
-        if not correct == None:         self.correct_cb = correct
-        if correct == None:             self.correct_cb = None
+        if not wrong == "clear":            self.wrong_cb = wrong
+        if wrong == "clear":                self.wrong_cb = None
 
-        if not wrong == None:           self.wrong_cb = wrong
-        if wrong == None:               self.wrong_cb = None
-
-        if not keypress == None:        self.keypress_cb = keypress
-        if keypress == None:            self.keypress_cb = None
+        if not keypress == "clear":         self.keypress_cb = keypress
+        if keypress == "clear":             self.keypress_cb = None
 
         
        
@@ -310,16 +347,23 @@ class UI_NumericKeypad():
         self.key_7.j_enableClick( enable )
         self.key_8.j_enableClick( enable )
         self.key_9.j_enableClick( enable )
-        self.key_enter.j_enableClick( enable )
-        self.key_reset.j_enableClick( enable )
 
     def Handler_AfterEntryAnim( self ):
         self.ENABLE_ALL_KEYPRESSES()
+
+    def Handler_AfterMainEntry( self ):
+        if not self.internalEntryExit:
+            self.afterEntrance_cb()
+        
+
+    def Handler_AfterMainExit( self ):
+        if not self.internalEntryExit:
+            self.afterExit_cb()
     
 
     def SHOW_ATTEMPTS( self, msg:str ):
 
-        number = self.inputAttemptLimit - self.inputAttempt
+        number = self.rule_inputAttemptLimit - self.j_attempt
 
         if number == 1:
             msg += f"\n{number} more attempt"
@@ -329,20 +373,25 @@ class UI_NumericKeypad():
         return msg
     
     def __RESET_PSWD_INDEX__(self):
-        self.i_combo = 0
+        self.j_passwordIndex = 0
     
     def __FULL_RESET__( self ):
         self.__RESET_INPUT__()
         # Reset Icons
-        self.inputAttempt = 0
+        self.j_attempt = 0
         
     def __RESET_INPUT__( self ):
-        self.INPUT = ""
+        self.j_INPUT = ""
+
         # Reset Buttons
-        self.key_reset.j_Exit(animate=True)
+        self.key_reset.j_Exit(animate=True) # Enter Button
+        self.key_reset.j_enableClick( enable=False )
         self.en_key_reset = False
-        self.key_enter.j_Exit(animate=True)
+        
+        self.key_enter.j_Exit(animate=True) # Reset Button
+        self.key_enter.j_enableClick( enable=False )
         self.en_key_enter = False
+
         # Reset Icons
         self.en_key_correct = False
         self.en_key_correct = False
@@ -351,14 +400,15 @@ class UI_NumericKeypad():
     def CHECK_ERRORS( self ):
 
         # Maximum Length Reached
-        if self.INPUT.__len__() >= self.inputSizeLimit:
-            self.inputAttempt += 1
+        if self.j_INPUT.__len__() >= self.rule_inputSizeLimit:
+            self.j_attempt += 1
             self.j_showMsg( self.msg_maxPinSize, showAttempts=True )
             self.__RESET_INPUT__()
         
         # Maximum Attempt Reached
-        if self.inputAttempt == self.inputAttemptLimit:
-            self.setInternalCallbacks()
+        if self.j_attempt == self.rule_inputAttemptLimit:
+            self.key_1.j_setEntryExitCallbacks( clear=True ) # Clear Callbacks with exiting set by next password
+            self.internalEntryExit = True
             self.j_Exit()
             self.__FULL_RESET__()
             self.j_showMsg(show=False)
@@ -368,78 +418,109 @@ class UI_NumericKeypad():
         
     def __KEYPRESS__(self, key:int = None):
 
-        self.last_key = key
+        self.j_lastKeypress = key
+        self.keypress_cb()
 
         # Add to user input
         if not key == 11 and not key == 22:
-            self.INPUT += str(key)
-            self.inputSize = self.INPUT.__len__()
+
+            self.j_INPUT += str(key)
+            self.inputSize = self.j_INPUT.__len__()
 
             # Show the reset button after first digit
-            if not self.en_key_reset and self.INPUT.__len__() == 1:
+            if not self.en_key_reset and self.j_INPUT.__len__() == 1:
+
+                def afterEntry(): 
+                    self.key_reset.j_enableClick(enable=True)
+
                 self.key_reset.j_Entrance(animate=True)
+                self.key_reset.j_setEntryExitCallbacks( entry=afterEntry )
                 self.en_key_reset = True
 
-            # Show the enter button after maximum
-            if not self.en_key_enter and self.INPUT.__len__() > self.inputSizeMin:
+            # Show the enter button after minimum number of characters
+            if not self.en_key_enter and self.j_INPUT.__len__() > self.rule_inputSizeMin:
+                
+                def afterEntry(): 
+                    self.key_enter.j_enableClick(enable=True)
 
-                def correctExitDone(): 
-                    self.key_correct.j_setEntryExitCallbacks( clear=True )
-                    self.key_enter.j_Entrance(animate=True)
-                    self.en_key_enter = True
+                if self.en_key_correct:
 
-                if self.key_correct:
+                    def correctExitDone(): 
+                        self.key_correct.j_setEntryExitCallbacks( clear=True )
+                        self.key_enter.j_setEntryExitCallbacks(entry=afterEntry)
+                        self.key_enter.j_Entrance(animate=True)
+                        self.en_key_enter = True
+
                     self.key_correct.j_setEntryExitCallbacks( exit=correctExitDone )
                     self.key_correct.j_Exit(animate=True)
                     self.en_key_correct = False
 
                 else:
+
                     self.key_enter.j_Entrance(animate=True)
+                    self.key_enter.j_setEntryExitCallbacks(entry=afterEntry)
                     self.en_key_enter = True
                 
                 
         else:
-            print( self.en_key_enter )
-            if key == 11 and self.en_key_enter: # Enter
-                if self.INPUT == self.COMBINATION[self.i_combo]:
+
+            if key == 11 and self.en_key_enter: # ENTER BUTTON
+
+                if self.j_INPUT == self.j_COMBINATION[self.j_passwordIndex]: # Correct
+
+                    self.correct_cb()
                     
                     def enterExitDone(): 
                         self.key_enter.j_setEntryExitCallbacks(clear=True)
                         self.key_correct.j_Entrance(True)
                         self.en_key_correct = True
+
                     def correctEntryDone(): 
                         self.key_correct.j_setEntryExitCallbacks(clear=True)
+                        self.internalEntryExit = True
                         self.j_Exit()
 
-                    self.i_combo += 1
+                    self.j_passwordIndex += 1
 
-                    if self.i_combo >= self.COMBINATION.__len__():  # All password are done
-                        self.setInternalCallbacks()
+                    if self.j_passwordIndex >= self.j_COMBINATION.__len__():  # All password are done
+                        self.key_1.j_setEntryExitCallbacks( clear=True ) # Clear Callbacks with exiting set by next password
                         self.tmr.start()
+                        self.internalEntryExit = False # Trigger external cb for exit
                         self.j_Exit()
                         self.__RESET_PSWD_INDEX__()
 
                     else:   # Next password
                         
                         def m():
-                            self.j_showMsgMultiPswd( self.i_combo )
+                            self.j_showMsgMultiPswd( self.j_passwordIndex )
+                            self.internalEntryExit = True
                             self.j_Entrance()
 
-                        self.setInternalCallbacks( after_exit = m )
+                        self.key_1.j_setEntryExitCallbacks( exit=m )
                         self.key_correct.j_setEntryExitCallbacks( entry = correctEntryDone )
-                        print("Restart")
                         
                     self.key_enter.j_setEntryExitCallbacks( exit = enterExitDone )
                     self.key_enter.j_Exit( animate=True )
+                    self.key_enter.j_enableClick( enable=False )
+
                     self.en_key_enter = False
                     self.j_showMsg( show=False )
 
                     self.__FULL_RESET__()
 
-            if key == 22: # Reset
-                   pass
+                else:
 
-        print( self.INPUT.__len__(), self.inputAttempt, self.INPUT )
+                    self.j_attempt += 1
+                    self.j_showMsg( self.msg_maxPinSize, showAttempts=True )
+                    self.__RESET_INPUT__()
+
+                    self.wrong_cb()
+
+            if key == 22: # RESET BUTTON
+                self.__RESET_INPUT__()
+                   
+
+        print( self.j_INPUT.__len__(), self.j_attempt, self.j_INPUT )
 
         self.CHECK_ERRORS()
 
