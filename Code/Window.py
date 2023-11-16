@@ -54,9 +54,6 @@ class UI_MAIN(QtWidgets.QMainWindow):
 
         self.unlocked = UI_UNLOCKED( self.BORDER_SMALL, self.jnIcon, self )
 
-
-        
-
     def INIT_LOADING_SYSTEM(self):
         self.loading.SET_TEXT( "System Loading" )
         self.loading.ENTRANCE() 

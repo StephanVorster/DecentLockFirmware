@@ -195,7 +195,6 @@ class JN_SVG_Widget():
 
         # Initiately do not show
         self.j_Exit(animate=False)
-        print( self.M_WIDGET.iconSize() )
 
     def inter_showGlow( self, show : bool = True, animate: bool = False, callback = None ) -> bool:
 
@@ -374,7 +373,6 @@ class JN_SVG_Widget():
             # Scale without animation
             else:
                 self.M_WIDGET.setIconSize( QSize(0,0) )
-                print(self.M_WIDGET.iconSize())
                 FUNC_TRY_CALLING( after_anim_cb )
         
         return True
