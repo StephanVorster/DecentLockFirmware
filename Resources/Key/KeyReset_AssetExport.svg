@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 99.01 99.01">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ee3968;
+      }
+
+      .cls-2 {
+        fill: #fff;
+        opacity: .2;
+      }
+    </style>
+  </defs>
+  <g id="PWD_PAGE" data-name="PWD PAGE">
+    <g id="Key">
+      <g id="Red_Key" data-name="Red Key">
+        <circle class="cls-2" cx="49.5" cy="49.5" r="49.5"/>
+        <path id="Reset_Symbol" data-name="Reset Symbol" class="cls-1" d="m49.5,26.32c-15.14,0-24.28,12.34-23.9,26.67h-6.61l10.98,15.8,8.61-16.11-6.95.31c.16-10.37,6.27-20.7,17.88-20.67,9.9.02,17.95,7.71,17.95,17.18s-8.05,17.18-17.95,17.18h0v6h0c13.21,0,23.95-10.4,23.95-23.18s-10.74-23.18-23.95-23.18Z"/>
+      </g>
+    </g>
+  </g>
+</svg>
