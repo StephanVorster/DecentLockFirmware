@@ -18,7 +18,8 @@ class MainSystem():
 
         
         self.timer.setSingleShot(True)
-        self.nfc = nfc_auth_handler()
+        print("Creaed NFC Object")
+        self.nfc = nfc_auth_handler(debug=True)
 
         self.START_UP()
 
@@ -33,23 +34,22 @@ class MainSystem():
     
     def STARTUP_IDLE(self):
         self.UI.INITLOADING_LOCKEDSCREEN()
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(17, GPIO.IN)
-        GPIO.add_event_detect(17, GPIO.FALLING, callback = self.ONLINEMODE_WAIT )
         self.nfc.setStateReady(True)
-        print( "Idle" )
-
-    def ONLINEMODE_WAIT(self, x):
-        print(123123123)
-        self.UI.ONLINE_MODE()
-        self.nfc.auth()
-        
         def handler( state:bool ):
             print(state)
             if state: self.ONLINEMODE_SUCCESS()
             else: self.ONLINEMODE_FAILED()
 
         self.nfc.auth_signal.connect( handler )
+        print("Attempting Thread Start")
+        self.nfc.start()
+        print( "Idle" )
+
+    def ONLINEMODE_WAIT(self, x):
+        print("Online Wait")
+        self.UI.ONLINE_MODE()
+        
+        
 
         print( "Load" )
         
