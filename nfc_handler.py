@@ -25,8 +25,7 @@ class nfc_auth_handler(QThread):
 	reset_pin = 17
 	address = "rHEA2cdWLUuoDiWyoxh1bpuNLYLxFug1Yf"
 	# The xrpl addresss and public key authorized to open this lock
-	authorized_accounts = [{"address": "rhUywgyUBUnTz3xw9VuMPtPggD2xzdbKK6",
-							"pub_key": "EDC964C2CF0B0E9F781781566F7AB05042E1EBFD64AB8376DC1CF847FD4379DAE0"}]
+	authorized_accounts = {"rhUywgyUBUnTz3xw9VuMPtPggD2xzdbKK6": {"pub_key": "EDC964C2CF0B0E9F781781566F7AB05042E1EBFD64AB8376DC1CF847FD4379DAE0", "token_id": "token123"}}
 	# account='rhUywgyUBUnTz3xw9VuMPtPggD2xzdbKK6'
 	last_sequence = -1
 	# sequence=38386169
@@ -46,6 +45,13 @@ class nfc_auth_handler(QThread):
 		self.debug = debug
 
 		print("NFC Init")
+
+	def get_stored_authorized_accounts(self):
+		auth_accounts = None
+		if os.path.exists("verified_accounts.json"):
+			with open('verified_accounts.json', 'r') as json_file:
+				auth_accounts = json.loads(json_file.read())
+		return auth_accounts
 
 	def is_setup_complete(self):
 		return self.setup_complete
@@ -333,19 +339,20 @@ class nfc_auth_handler(QThread):
 					with open('verified_accounts.json', 'w') as fp:
 						json.dump(existing_account_dict, fp)
 
-	def is_valid_accout(self, address, pub_key):
+	def is_valid_account(self, address, pub_key):
 		"""
-		This function checks if the address and public key provided are in the authorized accounts 
-		which are authorized to open this lock. The account address and the public key have to be in 
-		the same entry, this prevents frudulant attempts to open the lock with a mix match of accounts 
+		This function checks if the address and public key provided are in the authorized accounts
+		which are authorized to open this lock. The account address and the public key have to be in
+		the same entry, this prevents fraudulent attempts to open the lock with a mix match of accounts
 		and keys
 		"""
-		for i in range(0, len(self.authorized_accounts)):
+		auth_accounts = self.get_stored_authorized_accounts()
+		if auth_accounts is not None:
 			valid_account = False
 			valid_pub_key = False
-			if address == self.authorized_accounts[i]["address"]:
+			if address in auth_accounts.keys():
 				valid_account = True
-			if pub_key == self.authorized_accounts[i]["pub_key"]:
+			if pub_key == auth_accounts[address]["pub_key"]:
 				valid_pub_key = True
 			if valid_pub_key and valid_account:
 				return True
@@ -443,7 +450,7 @@ class nfc_auth_handler(QThread):
 
 	def authenticate_msg(self, tx_blob):
 		tzac = create_transaction_fromtx_blob(tx_blob)
-		authorized_account = self.is_valid_accout(tzac.account, tzac.signing_pub_key)
+		authorized_account = self.is_valid_account(tzac.account, tzac.signing_pub_key)
 		if authorized_account:
 			valid = is_valid_transaction(tx_blob)
 			if valid:
