@@ -12,12 +12,10 @@ import RPi.GPIO as GPIO
 import threading
 from xrpl_auth import create_transaction_fromtx_blob, is_valid_transaction
 import os
-
-
+import subprocess
 
 
 class nfc_auth_handler():
-
 	# Set the desired interface to True
 
 	# SPI = True
@@ -27,10 +25,12 @@ class nfc_auth_handler():
 	ONBOARD_STATE = "ONBOARD"
 	reset_pin = 17
 	state = AUTH_STATE
+	debug = False
 	# The xrpl address of this device
 	address = "rHEA2cdWLUuoDiWyoxh1bpuNLYLxFug1Yf"
 	# The xrpl addresss and public key authorized to open this lock
-	authorized_accounts = [{"address":"rhUywgyUBUnTz3xw9VuMPtPggD2xzdbKK6", "pub_key": "EDC964C2CF0B0E9F781781566F7AB05042E1EBFD64AB8376DC1CF847FD4379DAE0" }]
+	authorized_accounts = [{"address": "rhUywgyUBUnTz3xw9VuMPtPggD2xzdbKK6",
+							"pub_key": "EDC964C2CF0B0E9F781781566F7AB05042E1EBFD64AB8376DC1CF847FD4379DAE0"}]
 
 	last_sequence = -1
 	# sequence=38386169
@@ -41,39 +41,29 @@ class nfc_auth_handler():
 
 	state_ready = False
 
-	def __init__(self):
+	def __init__(self, debug):
 
 		super().__init__()
+		GPIO.setmode(GPIO.BCM)
+		GPIO.setup(self.reset_pin, GPIO.OUT)
 		GPIO.output(self.reset_pin, GPIO.HIGH)
 		PN532_SPI = Pn532Spi(Pn532Spi.SS0_GPIO8)
 		self.nfc = Pn532(PN532_SPI)
 		self.setup()
+		self.debug = debug
 		self.setup_complete = True
 
 		print("NFC Init")
 
-	
-
 	def is_setup_complete(self):
 		return self.setup_complete
-
 
 	def setup(self):
 		print("-------Peer to Peer HCE--------")
 
 		self.nfc.begin()
 
-		versiondata = self.nfc.getFirmwareVersion()
-		if not versiondata:
-			for i in range(0, 3):
-				versiondata = self.nfc.getFirmwareVersion()
-			if not versiondata:
-				print("Didn't find PN53x board")
-				raise RuntimeError("Didn't find PN53x board")  # halt
-
-		# Got ok data, print it out!
-		print("Found chip PN5 {:#x} Firmware ver. {:d}.{:d}".format((versiondata >> 24) & 0xFF, (versiondata >> 16) & 0xFF,
-																	(versiondata >> 8) & 0xFF))
+		self.check_and_reset()
 
 		# Set the max number of retry attempts to read from a card
 		# This prevents us from waiting forever for a card, which is
@@ -84,39 +74,36 @@ class nfc_auth_handler():
 		# self.nfc.writeRegister(0xE8, 0b10111101)
 		# self.nfc.writeRegister(0xD3, 0b11111000)
 
-
-
 		# configure board to read RFID tags
 		self.nfc.SAMConfig()
 
-
 	def get_auth1(self, counter=0):
-		print("Attemping to get Autthentication")
+		print("Sending Lock Address")
 		apdu_string = f"{{'address': '{self.address}'}}"
 		apdu = bytearray(apdu_string.encode())
 		success, back = self.send_data(apdu)
+		sleep(0.01)
 		ret_str = None
 		counter += 1
 		cont_flag = True
 		if (success):
-			if(back.decode() == "ACK"):
+			if (back.decode() == "ACK"):
 				while cont_flag:
 					counter += 1
 					print("HERE")
 					success, back = self.send_data(apdu)
 					print("responseLength: {:d}", len(back))
 					print(f"Message: {back}")
-					if counter>= 3:
+					if counter >= 3:
 						cont_flag = False
-						# if back.decode() != "ACK":
-						#   cont_flag = False
+					# if back.decode() != "ACK":
+					#   cont_flag = False
 					if back.decode() != "ACK":
 						ret_str = back.decode()
 						cont_flag = False
 			else:
 				ret_str = back.decode()
 		return ret_str
-
 
 	def get_authx(self, auth_number, counter=0):
 		print("Attemping to get Autthentication")
@@ -127,12 +114,12 @@ class nfc_auth_handler():
 		counter += 1
 		cont_flag = True
 		if (success):
-			if(back.decode() == "ACK"):
+			if (back.decode() == "ACK"):
 				while cont_flag:
 					success, back = self.send_data(apdu)
 					print("responseLength: {:d}", len(back))
 					print(f"Message: {back}")
-					if counter>= 3:
+					if counter >= 3:
 						if back.decode() != "ACK":
 							cont_flag = False
 					if back.decode() != "ACK":
@@ -142,13 +129,12 @@ class nfc_auth_handler():
 				ret_str = back.decode()
 		return ret_str
 
-
 	def send_data(self, data):
 		success, response = self.nfc.inDataExchange(data)
 		i = 0
 		if not success:
 			print("Initial Connection failed")
-		retries = 4
+		retries = 6
 		for i in range(0, retries):
 			print("Retrying Connection")
 			success, response = self.nfc.inDataExchange(data)
@@ -158,7 +144,6 @@ class nfc_auth_handler():
 			print("Connection failed")
 
 		return success, response
-
 
 	def send_nfc_apdu_hello(self):
 		print("Found something!")
@@ -182,28 +167,52 @@ class nfc_auth_handler():
 		return success, response
 
 	def edit_wifi_config(self, ssid, password):
-		config_lines = [
-			'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev',
-			'update_config=1',
-			'country=US',
-			'\n',
-			'network={',
-			'\tssid="{}"'.format(ssid),
-			'\tpsk="{}"'.format(password),
-			'}'
-		]
-		config = '\n'.join(config_lines)
+		# interface = 'wlan0'
+		# name = ssid
+		# password = password
+		# print("Attemping to edit wifi config")
+		# cmd = f"iwconfig {interface} essid {name} key {password}"
+		# os.system('iwconfig ' + interface + ' essid ' + name + ' key ' + password)
 
-		# give access and writing. may have to do this manually beforehand
-		os.popen("sudo chmod a+w /etc/wpa_supplicant/wpa_supplicant.conf")
+		# print("Attemping to edit wifi config")
+		# config_lines = [
+		# 	'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev',
+		# 	'update_config=1',
+		# 	'country=US',
+		# 	'\n',
+		# 	'network={',
+		# 	'\tssid="{}"'.format(ssid),
+		# 	'\tpsk="{}"'.format(password),
+		# 	'}\n'
+		# ]
+		# config = '\n'.join(config_lines)
+		# print("Attempting first command")
+		# # give access and writing. may have to do this manually beforehand
+		# os.system("sudo chmod a+w /etc/wpa_supplicant/wpa_supplicant.conf")
+		# print("Attempting to edit config file")
+		# # writing to file
+		# with open("/etc/wpa_supplicant/wpa_supplicant.conf", "w") as wifi:
+		# 	wifi.write(config)
 
-		# writing to file
-		with open("/etc/wpa_supplicant/wpa_supplicant.conf", "w") as wifi:
-			wifi.write(config)
+		# print("Wifi config added. Refreshing configs")
+		# ## refresh configs
+		# os.system("sudo wpa_cli -i wlan0 reconfigure")
 
-		print("Wifi config added. Refreshing configs")
-		## refresh configs
-		os.popen("sudo wpa_cli -i wlan0 reconfigure")
+		# Update /etc/wpa_supplicant/wpa_supplicant.conf
+		with open('/etc/wpa_supplicant/wpa_supplicant.conf', 'a') as f:
+			f.write('\n\nnetwork={\n')
+			f.write(f'    ssid="{ssid}"\n')
+			f.write(f'    psk="{password}"\n')
+			f.write('}\n')
+
+		# Update /etc/network/interfaces
+		with open('/etc/network/interfaces', 'a') as f:
+			f.write('\n\nauto wlan0\n')
+			f.write('iface wlan0 inet dhcp\n')
+			f.write('wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf\n')
+
+		# Restart networking
+		subprocess.run(['sudo', 'systemctl', 'restart', 'networking'])
 
 	def onboarding_get_xrpl_address(self):
 		apdu_string = f"{{'onboard': '{self.address}'}}"
@@ -211,7 +220,11 @@ class nfc_auth_handler():
 		success, response = self.send_data(data=apdu)
 		if success:
 			# return response.decode()
-			return json.loads(response.decode)["ADDR"]
+			print(response.decode())
+			js_obj = json.loads(response.decode())
+			print(type(response.decode()))
+
+			return json.loads(response.decode())["ADDR"]
 		return None
 
 	def onboarding_get_SSID(self):
@@ -220,7 +233,8 @@ class nfc_auth_handler():
 		success, response = self.send_data(data=apdu)
 		if success:
 			# return response.decode()
-			return json.loads(response.decode)["SSID"]
+			print(response.decode())
+			return json.loads(response.decode())["SSID"]
 		return None
 
 	def onboarding_get_wifi_pass(self):
@@ -228,8 +242,9 @@ class nfc_auth_handler():
 		apdu = bytearray(apdu_string.encode())
 		success, response = self.send_data(data=apdu)
 		if success:
-			return json.loads(response.decode)["PASS"]
-			# return response.decode()
+			print(response.decode())
+			return json.loads(response.decode())["PASS"]
+		# return response.decode()
 		return None
 
 	def onboarding_get_pub_key(self):
@@ -237,8 +252,9 @@ class nfc_auth_handler():
 		apdu = bytearray(apdu_string.encode())
 		success, response = self.send_data(data=apdu)
 		if success:
-			return json.loads(response.decode)["KEY"]
-			# return response.decode()
+			print(response.decode())
+			return json.loads(response.decode())["KEY"]
+		# return response.decode()
 		return None
 
 	def onboarding_get_token_id(self):
@@ -246,65 +262,57 @@ class nfc_auth_handler():
 		apdu = bytearray(apdu_string.encode())
 		success, response = self.send_data(data=apdu)
 		if success:
-			return json.loads(response.decode)["TOKEN"]
-			# return response.decode()
+			print(response.decode())
+			return json.loads(response.decode())["TOKEN"]
+		# return response.decode()
 		return None
 
 	def onboard_new_device(self):
 		onboard_obj = {}
-		success = self.search_for_device()
-		if success:
-			print("Found it")
-			success, response = self.send_nfc_apdu_hello()
-			if success and response == b"9000":
-				print("Starting Onboarding")
-				address = self.onboarding_get_xrpl_address()
-				if address is not None:
-					onboard_obj["address"] = response.decode()
-					ssid = self.onboarding_get_SSID()
-					if ssid is not None:
-						onboard_obj["ssid"] = ssid
-						passwd = self.onboarding_get_wifi_pass()
-						if passwd is not None:
-							onboard_obj["passwd"] = passwd
-							pub_key = self.onboarding_get_pub_key()
-							if pub_key is not None:
-								onboard_obj["pub_key"] = pub_key
-								token_id = self.onboarding_get_token_id()
-								if token_id is not None:
-									onboard_obj["token_id"] = token_id
-									self.process_onboarding_obj(onboard_obj)
-								else:
-									print("Onboarding failed: Receiving Token ID")
-							else:
-								print("Onboarding failed: Receiving Public Key")
-						else:
-							print("Onboarding failed: Receiving Wifi Pass")
-					else:
-						print("Onboarding failed: Receiving SSID")
-				else:
-					print("Onboarding failed: Receiving XRPL Address")
-			else:
-				print("Onboarding: Phone might be locked or might be rfid")
-		else:
-			print("Onboarding: No Device found")
 
+		print("Starting Onboarding")
+		address = self.onboarding_get_xrpl_address()
+		print(f"Onboarding Address: {address}")
+		if address is not None:
+			onboard_obj["address"] = address
+			print("Onboarding: Getting SSID")
+			ssid = self.onboarding_get_SSID()
+			if ssid is not None:
+				onboard_obj["ssid"] = ssid
+				passwd = self.onboarding_get_wifi_pass()
+				if passwd is not None:
+					onboard_obj["passwd"] = passwd
+					pub_key = self.onboarding_get_pub_key()
+					if pub_key is not None:
+						onboard_obj["pub_key"] = pub_key
+						token_id = self.onboarding_get_token_id()
+						if token_id is not None:
+							onboard_obj["token_id"] = token_id
+							self.process_onboarding_obj(onboard_obj)
+						else:
+							print("Onboarding failed: Receiving Token ID")
+					else:
+						print("Onboarding failed: Receiving Public Key")
+				else:
+					print("Onboarding failed: Receiving Wifi Pass")
+			else:
+				print("Onboarding failed: Receiving SSID")
+		else:
+			print("Onboarding failed: Receiving XRPL Address")
 
 	def process_onboarding_obj(self, onboarding_obj):
-		pass
-
-
+		self.edit_wifi_config(onboarding_obj["ssid"], onboarding_obj["passwd"])
 
 	def is_valid_accout(self, address, pub_key):
 		"""
-		This function checks if the address and public key provided are in the authorized accounts 
-		which are authorized to open this lock. The account address and the public key have to be in 
+		This function checks if the address and public key provided are in the authorized accounts
+		which are authorized to open this lock. The account address and the public key have to be in
 		the same entry, this prevents fraudulent attempts to open the lock with a mix match of accounts
 		and keys
 		"""
 		for i in range(0, len(self.authorized_accounts)):
 			valid_account = False
-			valid_pub_key =False
+			valid_pub_key = False
 			if address == self.authorized_accounts[i]["address"]:
 				valid_account = True
 			if pub_key == self.authorized_accounts[i]["pub_key"]:
@@ -314,12 +322,9 @@ class nfc_auth_handler():
 
 		return False
 
-	
-
-	def setStateReady(self, state:bool):
+	def setStateReady(self, state: bool):
 		self.state_ready = state
 		return
-
 
 	def search_for_device(self):
 		"""
@@ -327,9 +332,10 @@ class nfc_auth_handler():
 		"""
 		success = False
 		while not success:
+			self.check_and_reset()
 			success = self.nfc.inListPassiveTarget()
 		return success
-	
+
 	def nfc_auth_coms(self):
 		tx_blob = []
 		auth_1 = self.get_auth1()
@@ -358,7 +364,7 @@ class nfc_auth_handler():
 			else:
 				print("Auth 3 Failed try again")
 				return None
-	
+
 	def authenticate_msg(self, tx_blob):
 		tzac = create_transaction_fromtx_blob(tx_blob)
 		authorized_account = self.is_valid_accout(tzac.account, tzac.signing_pub_key)
@@ -371,7 +377,7 @@ class nfc_auth_handler():
 				return True
 			else:
 				print("Tx blob not valid")
-				
+
 				return False
 		else:
 			print("Account not authorized to open lock")
@@ -394,8 +400,8 @@ class nfc_auth_handler():
 		if versiondata:
 			if self.debug:
 				print("Found chip PN5 {:#x} Firmware ver. {:d}.{:d}".format((versiondata >> 24) & 0xFF,
-																		(versiondata >> 16) & 0xFF,
-																		(versiondata >> 8) & 0xFF))
+																			(versiondata >> 16) & 0xFF,
+																			(versiondata >> 8) & 0xFF))
 		return True
 
 	def resetPn532(self):
@@ -408,7 +414,7 @@ class nfc_auth_handler():
 			print("Resetting device")
 		GPIO.setmode(GPIO.BCM)
 		# Set reset pin as output
-		GPIO.setup(self.reset_pin, GPIO.OUT)
+
 		GPIO.output(self.reset_pin, GPIO.LOW)
 		sleep(0.001)
 		GPIO.output(self.reset_pin, GPIO.HIGH)
@@ -437,10 +443,11 @@ class nfc_auth_handler():
 					if tx_blob is not None:
 						tx_blob = "".join(tx_blob)
 						authenticated = self.authenticate_msg(tx_blob=tx_blob)
-						
+
 				else:
 					if response != b"9000":
 						if "onboard" in response.decode():
+							print("Starting Onboarding")
 							self.onboard_new_device()
 						else:
 							print("Phone might be locked or might be rfid")
@@ -448,7 +455,7 @@ class nfc_auth_handler():
 						print("Might be RFID")
 				if authenticated:
 					#   if self.state_ready:
-						#     self.auth_signal.emit(False)
+					#     self.auth_signal.emit(False)
 					print("AUTHENTICATED")
 				else:
 					print("ACCESS DENIED")
@@ -457,18 +464,11 @@ class nfc_auth_handler():
 				sleep(0.1)
 
 
-
 if __name__ == '__main__':
-
-	test_nfc = nfc_auth_handler()
+	test_nfc = nfc_auth_handler(debug=False)
 	test_nfc.setStateReady(True)
 	t1 = threading.Thread(target=test_nfc.main_nfc_thread, name="NFC:1")
 	t1.start()
 	t1.join()
 
-  
 
-
-    
-
-    
