@@ -8,8 +8,10 @@ from pn532pi import Pn532Spi
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import pyqtSignal, QThread
 import RPi.GPIO as GPIO
-
+import json
 from xrpl_auth import create_transaction_fromtx_blob, is_valid_transaction
+import os
+import subprocess
 
 
 class nfc_auth_handler(QThread):
@@ -48,8 +50,7 @@ class nfc_auth_handler(QThread):
 	def is_setup_complete(self):
 		return self.setup_complete
 
-
-	def setStateReady(self, state:bool):
+	def setStateReady(self, state: bool):
 		self.state_ready = state
 		return
 
@@ -62,7 +63,6 @@ class nfc_auth_handler(QThread):
 		connected_no_errors = self.checkDeviceConnection()
 		if not connected_no_errors:
 			self.resetPn532()
-
 
 		# versiondata = self.nfc.getFirmwareVersion()
 		# if not versiondata:
@@ -103,8 +103,8 @@ class nfc_auth_handler(QThread):
 					print(f"Message: {back}")
 					if counter >= 3:
 						cont_flag = False
-						# if back.decode() != "ACK":
-						#   cont_flag = False
+					# if back.decode() != "ACK":
+					#   cont_flag = False
 					if back.decode() != "ACK":
 						ret_str = back.decode()
 						cont_flag = False
@@ -136,7 +136,6 @@ class nfc_auth_handler(QThread):
 				ret_str = back.decode()
 		return ret_str
 
-
 	def send_data(self, data):
 		success, response = self.nfc.inDataExchange(data)
 		i = 0
@@ -150,7 +149,7 @@ class nfc_auth_handler(QThread):
 			success, response = self.nfc.inDataExchange(data)
 			if success:
 				break
-			# time.sleep(0.2)
+		# time.sleep(0.2)
 		if i >= retries and not success:
 			print("Connection failed")
 
@@ -177,6 +176,162 @@ class nfc_auth_handler(QThread):
 		success, response = self.send_data(selectApdu)
 
 		return success, response
+
+
+	def edit_wifi_config(self, ssid, password):
+		# interface = 'wlan0'
+		# name = ssid
+		# password = password
+		# print("Attemping to edit wifi config")
+		# cmd = f"iwconfig {interface} essid {name} key {password}"
+		# os.system('iwconfig ' + interface + ' essid ' + name + ' key ' + password)
+
+		# print("Attemping to edit wifi config")
+		# config_lines = [
+		# 	'ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev',
+		# 	'update_config=1',
+		# 	'country=US',
+		# 	'\n',
+		# 	'network={',
+		# 	'\tssid="{}"'.format(ssid),
+		# 	'\tpsk="{}"'.format(password),
+		# 	'}\n'
+		# ]
+		# config = '\n'.join(config_lines)
+		# print("Attempting first command")
+		# # give access and writing. may have to do this manually beforehand
+		# os.system("sudo chmod a+w /etc/wpa_supplicant/wpa_supplicant.conf")
+		# print("Attempting to edit config file")
+		# # writing to file
+		# with open("/etc/wpa_supplicant/wpa_supplicant.conf", "w") as wifi:
+		# 	wifi.write(config)
+
+		# print("Wifi config added. Refreshing configs")
+		# ## refresh configs
+		# os.system("sudo wpa_cli -i wlan0 reconfigure")
+
+		# Update /etc/wpa_supplicant/wpa_supplicant.conf
+		with open('/etc/wpa_supplicant/wpa_supplicant.conf', 'a') as f:
+			f.write('\n\nnetwork={\n')
+			f.write(f'    ssid="{ssid}"\n')
+			f.write(f'    psk="{password}"\n')
+			f.write('}\n')
+
+		# Update /etc/network/interfaces
+		with open('/etc/network/interfaces', 'a') as f:
+			f.write('\n\nauto wlan0\n')
+			f.write('iface wlan0 inet dhcp\n')
+			f.write('wpa-conf /etc/wpa_supplicant/wpa_supplicant.conf\n')
+
+		# Restart networking
+		subprocess.run(['sudo', 'systemctl', 'restart', 'networking'])
+
+	def onboarding_get_xrpl_address(self):
+		apdu_string = f"{{'onboard': '{self.address}'}}"
+		apdu = bytearray(apdu_string.encode())
+		success, response = self.send_data(data=apdu)
+		if success:
+			# return response.decode()
+			print(response.decode())
+			js_obj = json.loads(response.decode())
+			print(type(response.decode()))
+
+			return json.loads(response.decode())["ADDR"]
+		return None
+
+	def onboarding_get_SSID(self):
+		apdu_string = f"{{'onboard': 'SSID'}}"
+		apdu = bytearray(apdu_string.encode())
+		success, response = self.send_data(data=apdu)
+		if success:
+			# return response.decode()
+			print(response.decode())
+			return json.loads(response.decode())["SSID"]
+		return None
+
+	def onboarding_get_wifi_pass(self):
+		apdu_string = f"{{'onboard': 'PASS'}}"
+		apdu = bytearray(apdu_string.encode())
+		success, response = self.send_data(data=apdu)
+		if success:
+			print(response.decode())
+			return json.loads(response.decode())["PASS"]
+		# return response.decode()
+		return None
+
+	def onboarding_get_pub_key(self):
+		apdu_string = f"{{'onboard': 'KEY'}}"
+		apdu = bytearray(apdu_string.encode())
+		success, response = self.send_data(data=apdu)
+		if success:
+			print(response.decode())
+			return json.loads(response.decode())["KEY"]
+		# return response.decode()
+		return None
+
+	def onboarding_get_token_id(self):
+		apdu_string = f"{{'onboard': 'TOKEN'}}"
+		apdu = bytearray(apdu_string.encode())
+		success, response = self.send_data(data=apdu)
+		if success:
+			print(response.decode())
+			return json.loads(response.decode())["TOKEN"]
+		# return response.decode()
+		return None
+
+	def onboard_new_device(self):
+		onboard_obj = {}
+
+		print("Starting Onboarding")
+		address = self.onboarding_get_xrpl_address()
+		print(f"Onboarding Address: {address}")
+		if address is not None:
+			onboard_obj["address"] = address
+			print("Onboarding: Getting SSID")
+			ssid = self.onboarding_get_SSID()
+			if ssid is not None:
+				onboard_obj["ssid"] = ssid
+				passwd = self.onboarding_get_wifi_pass()
+				if passwd is not None:
+					onboard_obj["passwd"] = passwd
+					pub_key = self.onboarding_get_pub_key()
+					if pub_key is not None:
+						onboard_obj["pub_key"] = pub_key
+						token_id = self.onboarding_get_token_id()
+						if token_id is not None:
+							onboard_obj["token_id"] = token_id
+							self.process_onboarding_obj(onboard_obj)
+						else:
+							print("Onboarding failed: Receiving Token ID")
+					else:
+						print("Onboarding failed: Receiving Public Key")
+				else:
+					print("Onboarding failed: Receiving Wifi Pass")
+			else:
+				print("Onboarding failed: Receiving SSID")
+		else:
+			print("Onboarding failed: Receiving XRPL Address")
+
+	def process_onboarding_obj(self, onboarding_obj):
+		# self.edit_wifi_config(onboarding_obj["ssid"], onboarding_obj["passwd"])
+		account_dict = {}
+		account_details_dict = {"pub_key": onboarding_obj["pub_key"], "token_id": onboarding_obj["token_id"]}
+		if not os.path.exists("verified_accounts.json"):
+			account_dict[onboarding_obj["address"]] = account_details_dict
+			with open('verified_accounts.json', 'w') as fp:
+				json.dump(account_dict, fp)
+		else:
+			existing_account_dict = None
+			# Read the current accounts file tto the existing_account_dict variable
+			with open('verified_accounts.json', 'r') as json_file:
+				existing_account_dict = json.loads(json_file.read())
+			# Append the new account to the document and overwrite the file with the new address appended
+			if existing_account_dict is not None:
+				# If the account is not already in the verified accounts file
+				if onboarding_obj["address"] not in existing_account_dict.keys():
+					existing_account_dict[onboarding_obj["address"]] = account_details_dict
+					with open('verified_accounts.json', 'w') as fp:
+						json.dump(existing_account_dict, fp)
 
 	def is_valid_accout(self, address, pub_key):
 		"""
@@ -214,8 +369,8 @@ class nfc_auth_handler(QThread):
 		if versiondata:
 			if self.debug:
 				print("Found chip PN5 {:#x} Firmware ver. {:d}.{:d}".format((versiondata >> 24) & 0xFF,
-																		(versiondata >> 16) & 0xFF,
-																		(versiondata >> 8) & 0xFF))
+																			(versiondata >> 16) & 0xFF,
+																			(versiondata >> 8) & 0xFF))
 		return True
 
 	def resetPn532(self):
@@ -241,10 +396,8 @@ class nfc_auth_handler(QThread):
 		if not connected_no_errors:
 			self.resetPn532()
 
-
-
 	def search_for_device(self):
-	
+
 		success = False
 		# print(f"Ready?: {(not success) and (self.state_ready)}")
 		while (not success) and (self.state_ready):
@@ -313,7 +466,7 @@ class nfc_auth_handler(QThread):
 		In the UI integration the while should be preceded by a system wide enabled variable which will disable the nfc field when needed to save power
 		"""
 		print("Started Thread")
-		
+
 		while self.state_ready:
 			authenticated = False
 			# print(f"Ready?: {self.state_ready}")
@@ -327,20 +480,24 @@ class nfc_auth_handler(QThread):
 					if tx_blob is not None:
 						tx_blob = "".join(tx_blob)
 						authenticated = self.authenticate_msg(tx_blob=tx_blob)
-						
+
 				else:
 					if response != b"9000":
-						if self.debug:
-							print("Phone might be locked or might be rfid")
-						if self.state_ready:
-							self.auth_signal.emit(False)
+						if "onboard" in response.decode():
+							print("Starting Onboarding")
+							self.onboard_new_device()
+						else:
+							if self.debug:
+								print("Phone might be locked or might be rfid")
+							if self.state_ready:
+								self.auth_signal.emit(False)
 					else:
 						if self.debug:
 							print("Might be RFID")
 						if self.state_ready:
 							self.auth_signal.emit(False)
 				if authenticated:
-					
+
 					print("AUTHENTICATED")
 					if self.state_ready:
 						self.auth_signal.emit(True)
@@ -348,11 +505,10 @@ class nfc_auth_handler(QThread):
 					print("ACCESS DENIED")
 					if self.state_ready:
 						self.auth_signal.emit(False)
-					
+
 					sleep(1)
 			else:
 				sleep(0.1)
-			
 
 
 if __name__ == '__main__':

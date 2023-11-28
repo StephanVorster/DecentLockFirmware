@@ -301,7 +301,28 @@ class nfc_auth_handler():
 			print("Onboarding failed: Receiving XRPL Address")
 
 	def process_onboarding_obj(self, onboarding_obj):
-		self.edit_wifi_config(onboarding_obj["ssid"], onboarding_obj["passwd"])
+		# self.edit_wifi_config(onboarding_obj["ssid"], onboarding_obj["passwd"])
+		account_dict = {}
+		account_details_dict = {"pub_key": onboarding_obj["pub_key"], "token_id": onboarding_obj["token_id"]}
+		if not os.path.exists("verified_accounts.json"):
+			account_dict[onboarding_obj["address"]] = account_details_dict
+			with open('verified_accounts.json', 'w') as fp:
+				json.dump(account_dict, fp)
+		else:
+			existing_account_dict = None
+			# Read the current accounts file tto the existing_account_dict variable
+			with open('verified_accounts.json', 'r') as json_file:
+				existing_account_dict = json.loads(json_file.read())
+			# Append the new account to the document and overwrite the file with the new address appended
+			if existing_account_dict is not None:
+				# If the account is not already in the verified accounts file
+				if onboarding_obj["address"] not in existing_account_dict.keys():
+					existing_account_dict[onboarding_obj["address"]] = account_details_dict
+					with open('verified_accounts.json', 'w') as fp:
+						json.dump(existing_account_dict, fp)
+
+
+
 
 	def is_valid_accout(self, address, pub_key):
 		"""
@@ -450,25 +471,38 @@ class nfc_auth_handler():
 							print("Starting Onboarding")
 							self.onboard_new_device()
 						else:
+							if self.state_ready:
+								self.auth_signal.emit(True)
 							print("Phone might be locked or might be rfid")
 					else:
+						if self.state_ready:
+							self.auth_signal.emit(True)
 						print("Might be RFID")
 				if authenticated:
-					#   if self.state_ready:
-					#     self.auth_signal.emit(False)
+					if self.state_ready:
+						self.auth_signal.emit(True)
 					print("AUTHENTICATED")
 				else:
+					if self.state_ready:
+						self.auth_signal.emit(True)
 					print("ACCESS DENIED")
 					sleep(1)
 			else:
 				sleep(0.1)
 
 
+def test_process_onboarding():
+	test_nfc = nfc_auth_handler(debug=True)
+	test_obj = {"address": "address", "pub_key": "publicKey", "token_id": "token123"}
+	test_nfc.process_onboarding_obj(test_obj)
+
 if __name__ == '__main__':
-	test_nfc = nfc_auth_handler(debug=False)
-	test_nfc.setStateReady(True)
-	t1 = threading.Thread(target=test_nfc.main_nfc_thread, name="NFC:1")
-	t1.start()
-	t1.join()
-
-
+	
+	
+	# test_nfc = nfc_auth_handler(debug=False)
+	# test_nfc.setStateReady(True)
+	# t1 = threading.Thread(target=test_nfc.main_nfc_thread, name="NFC:1")
+	# t1.start()
+	# t1.join()
+	test_process_onboarding()
+	print("Finished")
