@@ -2,10 +2,12 @@ import sys
 from Window import *
 from NanoSerial import *
 from nfc_handler import *
+from camera_handler import camera
 
 class MainSystem():
 
     timer:QTimer = QTimer()
+    cam = camera()
 
 
     def __init__(self, UI:UI_MAIN):
@@ -55,10 +57,12 @@ class MainSystem():
         
 
     def ONLINEMODE_SUCCESS(self):
+        self.cam.capture_and_save()
         self.UI.UNLOCKED_SCREEN()
         print( "Unlock" )
 
     def ONLINEMODE_FAILED(self):
+        self.cam.capture_and_save()
         self.UI.loading.SET_EXTCB_EXIT( self.UI.locked.ENTRANCE )
         self.UI.loading.EXIT()
         print( "Locked" )
