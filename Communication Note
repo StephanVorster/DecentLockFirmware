@@ -1,0 +1,61 @@
+>>>>>>>>>>>>>>> SEND <<<<<<<<<<<<<<<
+
+Header                  101
+
+---- BUTTON ----
+
+Press                   101 00000000001
+Release                 101 00000000010
+Hold                    101 00000000100
+
+---- HALL ----
+
+Door Open               101 00000001000
+Door Close              101 00000010000
+
+---- PIR ----
+
+Detect                  101 00000100000
+
+---- SERVO ----         
+
+LOCKED                  101 00001000000
+UNLOCKED                101 00010000000
+JAMMED                  101 00100000000
+LOCKING                 101 01000000000
+UNLOCKING               101 10000000000
+
+
+>>>>>>>>>>>>>>> RECIEVE <<<<<<<<<<<<<<<
+
+---- LED ----           001
+
+RED ON                  001 00      
+RED OFF                 001 01      
+RED BLINK               001 10      
+RED TOGGLE              001 11      
+GRN ON                  010 00      
+GRN OFF                 010 01      
+GRN BLINK               010 10      
+GRN TOGGLE              010 11      
+
+---- BUZZER ----        011
+
+ON                      011 00      
+OFF                     011 01      
+BLINK                   011 10      
+TOGGLE                  011 11      
+
+---- SERVO ----         100
+
+LOCK                    100 00      
+UNLOCK                  100 01      
+RESET                   100 10      
+
+
+
+
+
+
+
+

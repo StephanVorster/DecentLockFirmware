@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_2" data-name="Layer 2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168.77 160.38">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #00a651;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #00a651;
+        stroke-miterlimit: 10;
+      }
+
+      .cls-2 {
+        fill: none;
+        stroke-linecap: round;
+        stroke-width: 15px;
+      }
+    </style>
+  </defs>
+  <g id="IDLE_PAGE" data-name="IDLE PAGE">
+    <g id="Unlock">
+      <rect class="cls-1" x=".5" y="74.47" width="111.86" height="85.41" rx="17.7" ry="17.7"/>
+      <path class="cls-2" d="m90.3,75.17v-34.29c0-18.44,14.95-33.38,33.38-33.38h4.21c18.44,0,33.38,14.95,33.38,33.38v12.51"/>
+    </g>
+  </g>
+</svg>
