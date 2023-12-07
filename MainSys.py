@@ -2,7 +2,8 @@ import sys
 from Window import *
 from NanoSerial import NANO
 from nfc_handler import *
-from Fingerprint import FINGERPRINT
+from Fingerprint import fingerprint
+from camera import camera
 
 class MainSystem():
 
@@ -10,7 +11,8 @@ class MainSystem():
     timer_popup:QTimer = QTimer()
 
     def __init__(self, UI:UI_MAIN):
-
+        self.fingerprint = fingerprint("/dev/ttyAMA2", 1, 3)
+        self.cam = camera()
         self.UI = UI
         self.START_UP()
 
@@ -130,7 +132,7 @@ class MainSystem():
 
 
     def ONLINEMODE_FAILED(self):
-
+        self.cam.capture_and_save()
         # Make sure to exit locked screen
         self.UI.locked.SET_NFC_CB(None)
         self.UI.locked.EXIT_NFC()
@@ -195,7 +197,31 @@ class MainSystem():
         print("234234")
 
         def handler_afterEntry():
-            self.fingerprint.SET_ACTION( self.fingerprint.ACTION.ENROLL )
+            with open('verified_accounts.json', 'r') as json_file:
+                existing_account_dict = json.loads(json_file.read())
+                if existing_account_dict is not None:
+                    onboarded_address = ""
+                    highest_id = -1
+                    print( "searching for a key" )
+                    for key in existing_account_dict.keys():
+                        if "pin" not in list(existing_account_dict[key].keys()):
+                            onboarded_address = key
+                            print(f"Adding fingerprint id to {key}")
+                            break
+                        if "finger_id" in list(existing_account_dict[key].keys()):
+                            if int(existing_account_dict[key]["finger_id"]) > highest_id:
+                                highest_id = int(existing_account_dict[key]["finger_id"])
+                    if highest_id == -1:
+                        highest_id = 0
+                    existing_account_dict[onboarded_address]["finger_id"] = (highest_id + 1)
+            
+            
+            with open('verified_accounts.json', 'w') as json_file:
+                json.dump(existing_account_dict, json_file)
+                print("Done Writng to JSON")
+            # self.fingerprint.SET_ACTION( self.fingerprint.ACTION.ENROLL )
+            self.fingerprint.enroll_finger(highest_id)
+            
 
         def handler_fingerprint( status:FINGERPRINT.ACTION ):
             print( status.name )
