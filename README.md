@@ -35,7 +35,3 @@ The project consists of two main components:
 ## Contributing
 
 Contributions to the Smart Lock Project are welcome! Feel free to fork the repository, make your changes, and submit a pull request.
-
-## License
-
-This project is licensed under the [MIT License](LICENSE).
